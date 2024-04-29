@@ -5,7 +5,6 @@ use sensor::Sensores;
 
 
 pub mod comm;
-pub mod conexao;
 pub mod sensor;
 
 fn main() {
