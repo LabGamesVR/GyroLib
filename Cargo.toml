@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+csv = "1.0.0"
+neuroflow = "0.2.0"
 queue = "0.3.1"
 regex = "1.10.4"
 serialport = "4.3.0"

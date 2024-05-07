@@ -2,7 +2,7 @@ extern crate unidecode;
 
 use std::{
     io::{self, Write},
-    path::Path,
+    path::{ Path, PathBuf},
     sync::mpsc,
     thread,
     time::Duration,
@@ -14,6 +14,67 @@ pub mod comm;
 pub mod dispositivo;
 pub mod sensor;
 
+fn treinar() -> std::io::Result<()> {
+    std::fs::create_dir_all("redes").unwrap();
+    let paths = std::fs::read_dir("coletas").unwrap();
+    for e in paths {
+        if let Ok(e) = e {
+            let addr = e.path();
+            println!(
+                "addr: {:?}",
+                addr.with_extension("")
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+            );
+            if let Some(dados) = dispositivo::DISPOSITIVOS_REGISTRADOS.obter_dados_dispositivo(
+                addr.with_extension("")
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+            ) {
+                println!("{}", dados.nome);
+                let mut dataset: neuroflow::data::DataSet = neuroflow::data::DataSet::new();
+
+                let file = std::fs::File::open(addr)?;
+                let mut reader = csv::Reader::from_reader(file);
+
+                for record in reader.records() {
+                    let linha = record.unwrap();
+                    let linha: Vec<&str> = linha.as_slice().split(';').collect();
+                    if let Ok(pitch) = linha[0].parse::<f64>() {
+                        if let Ok(roll) = linha[1].parse::<f64>() {
+                            if let Some(index_movimento) =
+                                dados.movimentos.iter().position(|item| item.0 == linha[2])
+                            {
+                                let mut saidas = Vec::with_capacity(dados.movimentos.len());
+                                for _ in 0..dados.movimentos.len() {
+                                    saidas.push(0.0);
+                                }
+                                saidas[index_movimento] = 1.0;
+                                dataset.push(&[pitch, roll], &saidas)
+                            }
+                        }
+                    }
+                }
+
+                let mut nn = neuroflow::FeedForward::new(&[
+                    2,
+                    30,
+                    30,
+                    dados.movimentos.len().try_into().unwrap(),
+                ]);
+                nn.activation(neuroflow::activators::Type::Tanh).learning_rate(0.01).train(&dataset, 1000);
+
+                let output_addr = PathBuf::from(format!("redes/{}.flow",dados.identificador));
+                neuroflow::io::save(&mut nn, output_addr.to_str().unwrap()).unwrap();
+            }
+        }
+    }
+    Ok(())
+}
 fn coletar() {
     let intervalo = Duration::from_millis(80);
     let rodadas = 1;
@@ -88,7 +149,6 @@ fn coletar() {
                     });
 
                     for index_movimento in 0..max_movimentos {
-
                         if sensores.obter_sensores_ativos().len() < qtd_dispositivos {
                             while sensores.obter_sensores_ativos().len() < qtd_dispositivos {
                                 println!("Aguardando reconexão");
@@ -119,19 +179,22 @@ fn coletar() {
                             //coletar
                             let valores = sensores.obter_valores();
 
-                            dispositivos
-                                .iter()
-                                .enumerate()
-                                .for_each(|(index_dispositivo, dispositivo)| {
-                                    if let Some(movimento) = dispositivo.movimentos.get(index_movimento) {
+                            dispositivos.iter().enumerate().for_each(
+                                |(index_dispositivo, dispositivo)| {
+                                    if let Some(movimento) =
+                                        dispositivo.movimentos.get(index_movimento)
+                                    {
                                         write!(
                                             &mut arquivos[index_dispositivo],
                                             "\n{};{};{}",
-                                            valores[index_dispositivo][0], valores[index_dispositivo][1], movimento.0
+                                            valores[index_dispositivo][0],
+                                            valores[index_dispositivo][1],
+                                            movimento.0
                                         )
                                         .unwrap();
                                     }
-                                });
+                                },
+                            );
 
                             io::stdout().flush().unwrap();
                             thread::sleep(intervalo);
@@ -173,5 +236,5 @@ fn teste() {
 }
 
 fn main() {
-    coletar();
+    treinar().unwrap();
 }
