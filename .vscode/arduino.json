@@ -1,0 +1,5 @@
+{
+    "sketch": "arduino\\gyro\\gyro.ino",
+    "board": "arduino:avr:uno",
+    "programmer": "arduinoisp"
+}

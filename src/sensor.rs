@@ -1,4 +1,4 @@
-use crate::comm::Comm;
+use crate::{comm::Comm, dispositivo};
 use queue::Queue;
 use std::{
     sync::{Arc, Mutex},
@@ -6,7 +6,6 @@ use std::{
 };
 
 static TIMEOUT: u64 = 1;
-static LISTA_BRANCA: [&'static str; 4] = ["papE", "papD", "luvaE", "luvaD"];
 
 #[derive(Debug)]
 pub struct Sensor {
@@ -18,6 +17,7 @@ pub struct Sensor {
 pub struct Sensores {
     pub sensores: Arc<Mutex<Vec<Sensor>>>,
     _comm: Comm,
+    buffer: Vec<Vec<f32>>,
 }
 
 fn filtro(msg: &str) -> bool {
@@ -49,6 +49,7 @@ impl Sensores {
         let s = Sensores {
             sensores,
             _comm: comm,
+            buffer:Vec::new()
         };
         s
     }
@@ -70,7 +71,7 @@ impl Sensores {
                 // println!("msg: \"{}\"",msg.trim());
                 let iterator = msg.trim().split('\t');
                 if let Some(device) = iterator.clone().take(1).collect::<Vec<&str>>().get(0) {
-                    if LISTA_BRANCA.contains(&device) {
+                    if dispositivo::DISPOSITIVOS_REGISTRADOS.contem_id(&device) {
                         let mut values: Vec<f32> = Vec::with_capacity(iterator.clone().count() - 1);
                         for item in iterator.skip(1) {
                             if let Ok(v) = re
@@ -119,25 +120,26 @@ impl Sensores {
         }
     }
 
-    pub fn obter_valores(&self, buffer: &mut Vec<Vec<f32>>) {
+    pub fn obter_valores(&mut self) -> &Vec<Vec<f32>> {
         if let Ok(sensores) = self.sensores.lock() {
             //para cada um dos sensores
             for i in 0..sensores.len() {
                 //garante que tem espaço para ele na lista
-                if buffer.len() < i + 1 {
-                    buffer.push(Vec::with_capacity(2));
+                if self.buffer.len() < i + 1 {
+                    self.buffer.push(Vec::with_capacity(2));
                 }
                 //para cada valor do sensor
                 for j in 0..sensores[i].values.len() {
-                    if buffer[i].len() < j + 1 {
-                        buffer[i].push(sensores[i].values[j]);
+                    if self.buffer[i].len() < j + 1 {
+                        self.buffer[i].push(sensores[i].values[j]);
                     } else {
-                        buffer[i][j] = sensores[i].values[j];
+                        self.buffer[i][j] = sensores[i].values[j];
                     }
                 }
-                buffer[i].truncate(sensores[i].values.len());
+                self.buffer[i].truncate(sensores[i].values.len());
             }
-            buffer.truncate(sensores.len());
+            self.buffer.truncate(sensores.len());
         }
+        &self.buffer
     }
 }

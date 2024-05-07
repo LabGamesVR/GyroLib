@@ -9,6 +9,9 @@ use queue::Queue;
 
 static TEMPO_NA_LISTA_NEGRA: u64 = 10;
 static TEMPO_MAX_SEM_MSG: u64 = 3;
+
+static DEBUG_LEVEL: u8 = 0;
+
 pub struct Comm {
     transmissores_fim: Vec<Sender<()>>,
     // filtro: Option<&'a (dyn Fn(&str) -> bool + Sync)>,
@@ -74,7 +77,9 @@ impl Comm {
                     }
                 }
                 Err(e) => {
-                    println!("couldn't recieve a datagram: {}", e);
+                    if DEBUG_LEVEL >= 1 {
+                        println!("couldn't recieve a datagram: {}", e);
+                    }
                 }
             }
         }
@@ -133,7 +138,9 @@ impl Comm {
                             portas.push((nome_porta.clone(), tx));
 
                             thread::spawn(move || {
-                                println!("Tentar porta {}",nome_porta);
+                                if DEBUG_LEVEL >= 2{
+                                    println!("Tentar porta {}",nome_porta);
+                                }
                                 Comm::tentar_conexao_serial(
                                     nome_porta,
                                     ref_a_lista,
@@ -189,12 +196,16 @@ impl Comm {
         lista_negra: Arc<Mutex<Vec<(String, time::SystemTime)>>>,
         filtro: Option<&'static (dyn Fn(&str) -> bool + Sync)>,
     ) {
-        println!("Ouvindo porta {}", porta.name().unwrap());
+        if DEBUG_LEVEL >= 2 {
+            println!("Ouvindo porta {}", porta.name().unwrap());
+        }
         let mut momento_ultima_mensagem = time::SystemTime::now();
         let mut serial_buf: Vec<u8> = vec![0; 10000];
         loop {
             if momento_ultima_mensagem.elapsed().unwrap().as_secs() > TEMPO_MAX_SEM_MSG{
-                println!("Porta {} desconectada por timeout",porta.name().unwrap());
+                if DEBUG_LEVEL >= 2 {
+                    println!("Porta {} desconectada por timeout",porta.name().unwrap());
+                }
                 if let Ok(mut ln) = lista_negra.lock(){
                     ln.push((porta.name().unwrap(), time::SystemTime::now()));
                 }
@@ -222,7 +233,9 @@ impl Comm {
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                 Err(e) => {
-                    println!("Desconectado por erro {}", e);
+                    if DEBUG_LEVEL >= 3 {
+                        println!("Desconectado por erro {}", e);
+                    }
 
                     //localiza pos dessa conexao na lista
                     let pos = portas
