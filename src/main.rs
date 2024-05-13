@@ -1,15 +1,17 @@
 extern crate unidecode;
 
 use std::{
+    ffi::CStr,
     io::{self, Write},
-    path::{ Path, PathBuf},
+    path::{Path, PathBuf},
     sync::mpsc,
     thread,
-    time::Duration,
+    time::{self, Duration, Instant},
 };
 
 use sensor::Sensores;
 
+pub mod c_bindings;
 pub mod comm;
 pub mod dispositivo;
 pub mod sensor;
@@ -66,9 +68,11 @@ fn treinar() -> std::io::Result<()> {
                     30,
                     dados.movimentos.len().try_into().unwrap(),
                 ]);
-                nn.activation(neuroflow::activators::Type::Tanh).learning_rate(0.01).train(&dataset, 1000);
+                nn.activation(neuroflow::activators::Type::Tanh)
+                    .learning_rate(0.01)
+                    .train(&dataset, 1000);
 
-                let output_addr = PathBuf::from(format!("redes/{}.flow",dados.identificador));
+                let output_addr = PathBuf::from(format!("redes/{}.flow", dados.identificador));
                 neuroflow::io::save(&mut nn, output_addr.to_str().unwrap()).unwrap();
             }
         }
@@ -235,6 +239,35 @@ fn teste() {
     }
 }
 
+fn teste_c_bindings() {
+    // for _ in 0..10 {
+    //     let ptr = unsafe { c_bindings::alocar_receptor() };
+    //     let mut buffer: [u8; 100] = [0; 100];
+    //     unsafe{
+    //         c_bindings::sensores_conectados(ptr, buffer.as_mut_ptr())
+    //     };
+    //     unsafe{ c_bindings::liberar_receptor(ptr)};
+    //     thread::sleep(time::Duration::from_millis(200));
+    //     println!("");
+    // }
+    let ptr = unsafe { c_bindings::alocar_receptor() };
+    let mut u8buffer: [u8; 100] = [0; 100];
+    let mut f32buffer: [f32; 100] = [0.0; 100];
+    loop {
+        let n_sensores = unsafe { c_bindings::sensores_conectados(ptr, u8buffer.as_mut_ptr()) };
+        for float in 0..unsafe { c_bindings::leitura_bruta(ptr, f32buffer.as_mut_ptr()) } {
+            println!("== {}", f32buffer[float as usize]);
+        }
+        println!("{}: {}", n_sensores, unsafe {
+            CStr::from_ptr(u8buffer.as_ptr() as *const _)
+                .to_str()
+                .unwrap()
+        });
+        thread::sleep(time::Duration::from_millis(200));
+    }
+}
+
 fn main() {
-    treinar().unwrap();
+    teste_c_bindings();
+    //treinar().unwrap();
 }

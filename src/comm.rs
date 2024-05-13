@@ -18,6 +18,7 @@ pub struct Comm {
 }
 
 impl Comm {
+    #[allow(dead_code)]
     pub fn new(queue: Arc<Mutex<Queue<String>>>) -> Self {
         let (tx1, rx1) = mpsc::channel();
         let (tx2, rx2) = mpsc::channel();
@@ -57,16 +58,20 @@ impl Comm {
             Ok(s) => s,
             Err(e) => panic!("couldn't bind socket: {}", e),
         };
+        socket.set_nonblocking(true)
+        .expect("Failed to enter non-blocking mode");
 
         let mut buf = [0; 1000];
         loop {
             match receptor_fim.try_recv() {
                 Ok(_) | Err(TryRecvError::Disconnected) => {
+                    println!("Encerrando escutador wifi");
                     break;
                 }
-                Err(TryRecvError::Empty) => {}
+                Err(TryRecvError::Empty) => {
+                }
             }
-
+            
             match socket.recv_from(&mut buf) {
                 Ok((_amt, _src)) => {
                     if let Ok(msg) = std::str::from_utf8(&buf) {
@@ -111,6 +116,7 @@ impl Comm {
         loop {
             match receptor_fim.try_recv() {
                 Ok(_) | Err(TryRecvError::Disconnected) => {
+                    println!("Encerrando escutador serial");
                     break;
                 }
                 Err(TryRecvError::Empty) => {}
@@ -279,6 +285,7 @@ fn add_to_queue(
 impl Drop for Comm {
     fn drop(&mut self) {
         for tx in &self.transmissores_fim {
+            println!("Enviando transmissao-fim");
             tx.send(()).unwrap();
         }
     }
