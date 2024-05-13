@@ -57,7 +57,29 @@ pub unsafe extern "C" fn sensores_conectados(s: *mut Sensores, buffer: *mut u8) 
     contador
 }
 
+/*
+Se tiver um sensor que tenha previsor valido, preenche o buffer com o movimento;
+se não, esvazia o buffer
+*/
 #[no_mangle]
-pub unsafe extern "C" fn teste()->i32{
-    return 42;
+pub unsafe extern "C" fn obter_movimento(s: *mut Sensores, buffer: *mut u8) {
+    todo!()
+}
+
+/*
+Se tiver um sensor que tenha previsor valido, preenche o buffer com os movimentos dele, separados por ';';
+se não, esvazia o buffer
+*/
+#[no_mangle]
+pub unsafe extern "C" fn listar_movimentos(s: *mut Sensores, buffer: *mut u8) {
+    todo!()
+}
+
+/*
+Se tiver um sensor que tenha previsor valido, preenche o buffer com dois numeros representando coordenadas;
+se não, esvazia o buffer
+*/
+#[no_mangle]
+pub unsafe extern "C" fn obter_movimento_cruz(s: *mut Sensores, buffer: *mut f32) {
+    todo!()
 }

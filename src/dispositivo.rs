@@ -7,6 +7,7 @@ ao seu dispositivo um nome como mostrado ao usuário, um identificador único (t
 como registrado na variável "identificador" de gyro.ino) e uma lista de movimentos
 & descrições.
 */
+
 pub struct Dispositivo {
     pub nome: &'static str,
     pub identificador: &'static str,
@@ -29,6 +30,14 @@ impl Dispositivos {
             }
         }
         return false;
+    }
+    pub fn obter_dispositivo_com_id(&self, identificador: &str) -> Option<&'static Dispositivo> {
+        for elemento in self.lista {
+            if elemento.identificador == identificador {
+                return Some(&elemento);
+            }
+        }
+        None
     }
     pub fn obter_dados_dispositivo(&self, identificador: &str) -> Option<&'static Dispositivo> {
         self.lista

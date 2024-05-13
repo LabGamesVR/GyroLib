@@ -1,4 +1,4 @@
-use crate::{comm::Comm, dispositivo};
+use crate::{comm::Comm, dispositivo, previsor::LazyPrevisor};
 use queue::Queue;
 use std::{
     sync::{Arc, Mutex},
@@ -7,11 +7,11 @@ use std::{
 
 static TIMEOUT: u64 = 1;
 
-#[derive(Debug)]
 pub struct Sensor {
     pub device: String,
     pub values: Vec<f32>,
     pub time: time::SystemTime,
+    pub previsor: LazyPrevisor,
 }
 
 pub struct Sensores {
@@ -46,12 +46,11 @@ impl Sensores {
         let copia = Arc::clone(&sensores);
 
         thread::spawn(move || Sensores::listener(queue, copia));
-        let s = Sensores {
+        Sensores {
             sensores,
             _comm: comm,
-            buffer:Vec::new()
-        };
-        s
+            buffer: Vec::new(),
+        }
     }
     pub fn obter_sensores_ativos(&self) -> Vec<String> {
         self.sensores
@@ -94,6 +93,7 @@ impl Sensores {
                                     device: device.to_string(),
                                     values,
                                     time: time::SystemTime::now(),
+                                    previsor: LazyPrevisor::NaoLido,
                                 })
                             }
 
@@ -141,5 +141,21 @@ impl Sensores {
             self.buffer.truncate(sensores.len());
         }
         &self.buffer
+    }
+
+    pub fn obter_movimento_primeiro_sensor(&mut self) -> Option<&'static str> {
+        for sensor in self
+            .sensores
+            .lock()
+            .unwrap()
+            .iter_mut()
+            .filter(|s| s.time.elapsed().unwrap().as_secs() < TIMEOUT)
+        {
+            
+            if let Some(v) = sensor.previsor.prever_movimento(&sensor.values, &sensor.device){
+                return Some(v);
+            }
+        }
+        None
     }
 }

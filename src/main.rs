@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
     sync::mpsc,
     thread,
-    time::{self, Duration, Instant},
+    time::{self, Duration}
 };
 
 use sensor::Sensores;
@@ -15,6 +15,7 @@ pub mod c_bindings;
 pub mod comm;
 pub mod dispositivo;
 pub mod sensor;
+pub mod previsor;
 
 fn treinar() -> std::io::Result<()> {
     std::fs::create_dir_all("redes").unwrap();
@@ -221,7 +222,7 @@ fn coletar() {
     }
     println!("\nColeta finalizada, agradecemos à participação.\n");
 }
-fn teste() {
+fn testar() {
     let mut sensores = Sensores::new();
 
     loop {
@@ -235,7 +236,8 @@ fn teste() {
             }
         }
         println!("");
-        thread::sleep(Duration::from_millis(200));
+        println!("{:?}",sensores.obter_movimento_primeiro_sensor());
+        thread::sleep(Duration::from_millis(2000));
     }
 }
 
@@ -268,6 +270,7 @@ fn teste_c_bindings() {
 }
 
 fn main() {
-    teste_c_bindings();
+    testar();
+    //teste_c_bindings();
     //treinar().unwrap();
 }
